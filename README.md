@@ -179,7 +179,7 @@ Three distinct approaches were evaluated to find the optimal recommendation engi
   - **HitRate@K:** 0.2060
   - **Coverage:** 0.611
   - **Predictions evaluated:** 18,171 over 1,571 users
-- **Verdict:** While mathematically interesting, hard-clustering limits the nuanced, ranked recommendations required for a consumer-facing app compared to continuous similarity scoring.
+> **Verdict:** While mathematically interesting, hard-clustering limits the nuanced, ranked recommendations required for a consumer-facing app compared to continuous similarity scoring.
 
 <br>
 
