@@ -145,16 +145,40 @@ Three distinct approaches were evaluated to find the optimal recommendation engi
 ### 🚀 1. Cosine Similarity (Deployed Model)
 - **Mechanism:** Calculates the cosine of the angle between two projected vectors (books) in a multi-dimensional user space.
 - **Why it was chosen:** Highly efficient, deterministic, and scales beautifully within Streamlit. Automatically normalizes for users who rate books more generously than others.
+- **Evaluation Metrics:**
+  - **MAE:** 4.6691
+  - **RMSE:** 5.9147
+  - **Precision@K:** 0.0323
+  - **Recall@K:** 0.0847
+  - **NDCG@K:** 0.1313
+  - **HitRate@K:** 0.2261
+  - **Coverage:** 0.764
+  - **Predictions evaluated:** 4,821 over 1,571 users
 
 ### 🤖 2. k-Nearest Neighbors (kNN)
 - **Mechanism:** Utilized `sklearn.neighbors.NearestNeighbors` with `metric='cosine'` and `algorithm='brute'`.
 - **Evaluation Metrics:**
-  - **Mean Absolute Error (MAE):** `2.145`
-  - **Root Mean Squared Error (RMSE):** `3.958`
+  - **MAE:** 4.7456
+  - **RMSE:** 5.9767
+  - **Precision@K:** 0.0323
+  - **Recall@K:** 0.0847
+  - **NDCG@K:** 0.1313
+  - **HitRate@K:** 0.2261
+  - **Coverage:** 0.764
+  - **Predictions evaluated:** 5,102 over 1,571 users
 
 ### 📊 3. K-Means Clustering
 - **Mechanism:** Unsupervised grouping of similar books.
 - **Optimization:** Used the **Silhouette Score** to find the optimal number of clusters ($k=2$, score = `0.6518`).
+- **Evaluation Metrics:**
+  - **MAE:** 5.9205
+  - **RMSE:** 6.7444
+  - **Precision@K:** 0.0271
+  - **Recall@K:** 0.0743
+  - **NDCG@K:** 0.1170
+  - **HitRate@K:** 0.2060
+  - **Coverage:** 0.611
+  - **Predictions evaluated:** 18,171 over 1,571 users
 - **Verdict:** While mathematically interesting, hard-clustering limits the nuanced, ranked recommendations required for a consumer-facing app compared to continuous similarity scoring.
 
 <br>
