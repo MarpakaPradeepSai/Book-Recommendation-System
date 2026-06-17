@@ -10,7 +10,7 @@
 
 </div>
   
-A machine learning-powered web application designed to recommend books to users based on collaborative filtering techniques. By analyzing underlying patterns in user reading histories and ratings, the system identifies similarities between books to provide highly accurate, personalized reading recommendations. 
+A machine learning-powered recommendation engine designed to suggest books based on collaborative filtering techniques. By analyzing underlying patterns in user reading histories and explicit ratings, the system identifies similarities between items to provide highly accurate, personalized reading recommendations tailored to specific users.
 
 <br>
 
@@ -23,6 +23,7 @@ A machine learning-powered web application designed to recommend books to users 
 - [Live Demo](#-live-demo)
 - [Dataset Overview](#-dataset-overview)
 - [Methodology & Data Processing](#-methodology--data-processing)
+- [User-Specific Personalized Recommendations](#-user-specific-personalized-recommendations)
 - [Model Architecture & Evaluation](#-model-architecture--evaluation)
 - [Key EDA Findings](#-key-eda-findings)
 - [Installation & Usage](#-installation--usage)
@@ -54,7 +55,9 @@ This project specifically utilizes **Item-Based Collaborative Filtering**, which
 
 ### Objective
 
-Build a robust recommendation engine capable of processing millions of user interactions to suggest highly relevant books, deployed as a user-friendly web application.
+The primary objective of this project is to develop an **Item-Based Collaborative Filtering** recommendation engine capable of processing millions of user interactions to accurately suggest books. 
+
+By calculating similarity metrics between books, the system identifies hidden relationships between different titles rather than relying on standard demographic profiles. Ultimately, the goal is to build a scalable model that predicts user preferences, evaluates different clustering algorithms, and enhances the discovery of relevant literature via a live, deployed web application.
 
 <div align="center">
 
@@ -64,9 +67,9 @@ Build a robust recommendation engine capable of processing millions of user inte
 |-----------|-------------|
 | **Core Algorithm** | Item-Based Collaborative Filtering |
 | **Similarity Metric** | Cosine Similarity |
+| **Data Optimization** | Isolating `explicit_ratings_df` to prevent implicit data skew |
 | **Sparsity Handling** | Threshold filtering (Active Users > 100 ratings, Popular Books > 50 ratings) |
 | **Alternative Models Tested** | k-Nearest Neighbors (kNN), K-Means Clustering |
-| **Data Storage** | Hugging Face Datasets (`IamPradeep/BRS_DATA`) |
 | **Deployment** | Streamlit Web Application |
 
 </div>
@@ -84,17 +87,17 @@ Try the live recommendation engine here:
 <div align="center">
   <table>
     <tr>
-      <th>🖥️ App Interface</th>
-      <th>✨ Live Recommendations</th>
+      <th>⚡ Find Similar Books</th>
+      <th>✨ Personalized Recommendations for Users</th>
     </tr>
     <tr>
-      <td><img src="https://github.com/MarpakaPradeepSai/Book-Recommendation-System/blob/main/Data/Images%20&%20GIF/BRS-UI.png?raw=true" alt="App Interface" height="400"/></td>
-      <td><img src="https://github.com/MarpakaPradeepSai/Book-Recommendation-System/blob/main/Data/Images%20&%20GIF/Recommendations-GIF.gif?raw=true" alt="Live Recommendations" height="400"/></td>
+      <td><img src="https://github.com/MarpakaPradeepSai/Book-Recommendation-System/blob/main/Data/Images%20&%20GIF/Find_Similar_Books.gif?raw=true" alt="App Interface" height="400"/></td>
+      <td><img src="https://github.com/MarpakaPradeepSai/Book-Recommendation-System/blob/main/Data/Images%20&%20GIF/Personalized_Recommendations.gif?raw=true" alt="Live Recommendations" height="400"/></td>
     </tr>
   </table>
 </div>
 
-> Simply select a book you've enjoyed, and the system will instantly generate a curated list of top recommendations complete with cover art, author details, and publication years!
+> Simply input a `User ID` or select a book you've enjoyed, and the system will instantly generate a curated list of top recommendations complete with cover art, author details, and publication years!
 
 <br>
 
@@ -123,16 +126,33 @@ Find the Datasets here:
 
 ## 🔬 Methodology & Data Processing
 
-### 🧹 1. Data Cleaning
-- **Handling Outliers:** Detected and removed extreme outliers in the `Age` demographic using the IQR (Interquartile Range) method to ensure clean demographic analysis.
-- **Type Casting:** Cleaned invalid string entries in the `Year-Of-Publication` column and converted it to integer formats.
-- **Missing Values:** Dropped rows with null `Book-Title` or `Book-Author` entries to ensure the final UI displays complete information.
+### 🧹 1. Data Cleaning & Engineering
+- **Missing Values & Invalid Formats:** Addressed formatting errors in the `Year-Of-Publication` column where string values (e.g., publisher names like DK Publishing or Gallimard) had incorrectly shifted into the year column. These misaligned rows were isolated and shifted back into their correct positions before safely coercing the column to numeric. Dropped rows with null `Book-Title` or `Book-Author` entries.
+- **Handling Demographics:** Detected and assessed extreme outliers in the `Age` demographic using the IQR method to ensure accurate visualization of the user base.
 
 ### ⚖️ 2. Sparsity Reduction (The "Cold Start" Fix)
 Recommendation matrices are notoriously sparse. To ensure high-quality recommendations and computational efficiency, the dataset was rigorously filtered:
 1. **Active Users Only:** Filtered out users who rated fewer than **100 books**.
 2. **Popular Books Only:** Filtered out books that received fewer than **50 ratings**.
-3. **Result:** A dense, high-signal user-item pivot table ready for mathematical similarity calculations.
+
+### 🏗️ 3. Matrix Construction & `explicit_ratings_df`
+A crucial step in the data pipeline was handling "implicit" ratings (interactions denoted by a `0`). 
+- Treating a `0` interaction as a poor rating severely corrupts the mathematical calculations of a similarity matrix.
+- To solve this, an **`explicit_ratings_df`** was isolated, containing *only* active ratings between `1` and `10`.
+- The final User-Item pivot table was generated exclusively from this explicit dataframe, ensuring that Cosine calculations accurately reflect true user enjoyment rather than mere interactions.
+
+<br>
+
+---
+
+## 👤 User-Specific Personalized Recommendations
+
+Beyond finding "similar books", the system is engineered to generate highly personalized recommendations for individual users via a `get_recommendations()` pipeline:
+
+1. **Context Fetching:** The system takes a specific `User-ID` and retrieves their entire interaction history (both explicit ratings and implicit interactions).
+2. **Candidate Generation:** It queries the Item-Based similarity matrix to find the nearest neighbors (most similar books) for every book the user has highly rated.
+3. **Critical Filtering:** The system actively tracks the user's history and cross-references the candidate list to **filter out books the user has already read/interacted with**. 
+4. **Scoring & Ranking:** The remaining unseen candidates are ranked based on aggregated similarity scores, returning the definitive `Top K` customized recommendations.
 
 <br>
 
@@ -140,46 +160,67 @@ Recommendation matrices are notoriously sparse. To ensure high-quality recommend
 
 ## ⚔️ Model Architecture & Evaluation
 
-Three distinct approaches were evaluated to find the optimal recommendation engine:
+Three distinct approaches were evaluated using a unified framework, predicting ratings and ranking quality across the dataset.
 
 ### 🚀 1. Cosine Similarity (Deployed Model)
-- **Mechanism:** Calculates the cosine of the angle between two projected vectors (books) in a multi-dimensional user space.
-- **Why it was chosen:** Highly efficient, deterministic, and scales beautifully within Streamlit. Automatically normalizes for users who rate books more generously than others.
-- **Evaluation Metrics:**
-  - **MAE:** 4.6691
-  - **RMSE:** 5.9147
-  - **Precision@K:** 0.0323
-  - **Recall@K:** 0.0847
-  - **NDCG@K:** 0.1313
-  - **HitRate@K:** 0.2261
-  - **Coverage:** 0.764
-  - **Predictions evaluated:** 4,821 over 1,571 users
+- **Mechanism:** Calculates the cosine of the angle between two projected vectors (books) in the explicit multi-dimensional user space.
+- **Evaluation Metrics (K=10):**
+
+<div align="center">
+
+| Metric | Score |
+|:---|:---|
+| **MAE** | 1.0577 |
+| **RMSE** | 1.6181 |
+| **Precision@10** | 0.0326 |
+| **Recall@10** | 0.0868 |
+| **NDCG@10** | 0.1323 |
+| **HitRate@10** | 0.2293 |
+| **Coverage** | 0.7397 |
+
+</div>
+
+- **Why it was deployed:** Offered the highest item coverage and exact determinism matching kNN, but scaled perfectly for real-time Streamlit deployment. 
 
 ### 🤖 2. k-Nearest Neighbors (kNN)
-- **Mechanism:** Utilized `sklearn.neighbors.NearestNeighbors` with `metric='cosine'` and `algorithm='brute'`.
-- **Evaluation Metrics:**
-  - **MAE:** 4.7456
-  - **RMSE:** 5.9767
-  - **Precision@K:** 0.0323
-  - **Recall@K:** 0.0847
-  - **NDCG@K:** 0.1313
-  - **HitRate@K:** 0.2261
-  - **Coverage:** 0.764
-  - **Predictions evaluated:** 5,102 over 1,571 users
+- **Mechanism:** Utilized `sklearn.neighbors.NearestNeighbors` with `metric='cosine'` and `algorithm='brute'` on the explicit pivot table.
+- **Evaluation Metrics (K=10):**
+
+<div align="center">
+
+| Metric | Score |
+|:---|:---|
+| **MAE** | 1.0577 |
+| **RMSE** | 1.6181 |
+| **Precision@10** | 0.0326 |
+| **Recall@10** | 0.0868 |
+| **NDCG@10** | 0.1323 |
+| **HitRate@10** | 0.2293 |
+| **Coverage** | 0.7388 |
+
+</div>
+
+- **Verdict:** Yielded practically identical predictive performance to direct Cosine calculation, but with marginally less catalog coverage.
 
 ### 📊 3. K-Means Clustering
-- **Mechanism:** Unsupervised grouping of similar books.
-- **Optimization:** Used the **Silhouette Score** to find the optimal number of clusters ($k=2$, score = `0.6518`).
-- **Evaluation Metrics:**
-  - **MAE:** 5.9205
-  - **RMSE:** 6.7444
-  - **Precision@K:** 0.0271
-  - **Recall@K:** 0.0743
-  - **NDCG@K:** 0.1170
-  - **HitRate@K:** 0.2060
-  - **Coverage:** 0.611
-  - **Predictions evaluated:** 18,171 over 1,571 users
-> **Verdict:** While mathematically interesting, hard-clustering limits the nuanced, ranked recommendations required for a consumer-facing app compared to continuous similarity scoring.
+- **Mechanism:** Unsupervised grouping of similar books. Used Silhouette Score to find the optimal number of clusters ($k=2$, score = `0.3588`).
+- **Evaluation Metrics (K=10):**
+
+<div align="center">
+
+| Metric | Score |
+|:---|:---|
+| **MAE** | 1.1627 |
+| **RMSE** | 1.5868 |
+| **Precision@10** | 0.0258 |
+| **Recall@10** | 0.0712 |
+| **NDCG@10** | 0.1123 |
+| **HitRate@10** | 0.2003 |
+| **Coverage** | 0.6017 |
+
+</div>
+
+- **Verdict:** Hard-clustering forces books into strict groups, lowering hit rates and coverage compared to continuous neighborhood scoring.
 
 <br>
 
@@ -206,9 +247,9 @@ Extensive Exploratory Data Analysis (EDA) revealed fascinating insights about re
 
 ### 📉 2. Rating Distributions & Engagement
 
-*   **The Implicit Majority:** Over **647,294** interactions were implicit (a rating of 0, meaning the user interacted with the book but didn't leave a 1-10 score).
+*   **The Implicit Majority:** Over **647,294** interactions were implicit (a rating of 0, meaning the user interacted with the book but didn't leave a score).
 *   **Positivity Bias:** Among explicit ratings (1-10), **8 is the most common score**, indicating users are more likely to rate books they actually enjoyed.
-*   **The "Wild Animus" Anomaly:** The book *Wild Animus* had the highest total occurrences (2,502) but overwhelmingly dominated the **"1-star"** rating category. High visibility does not equal high satisfaction!
+*   **The "Wild Animus" Anomaly:** The book *Wild Animus* had the highest total occurrences (2,502) but overwhelmingly dominated the **"1-star"** rating category. High visibility clearly does not guarantee high reader satisfaction!
 
 <br>
 
@@ -219,8 +260,8 @@ Extensive Exploratory Data Analysis (EDA) revealed fascinating insights about re
 | Category | Top Entity | Volume | Observation |
 |---|---|---|---|
 | **Top Author** | **William Shakespeare** | 495 Books | Classic literature remains highly published. |
-| **Top Contemp. Author** | **Agatha Christie** | 476 Books | Closely followed by Stephen King (332). |
-| **Top Publisher** | **Harlequin** | 7,499 Books | Romance dominates mass-market publishing, far exceeding the #2 publisher (Silhouette at 4,183). |
+| **Top Contemp. Author** | **Agatha Christie** | 476 Books | Closely followed by Stephen King. |
+| **Top Publisher** | **Harlequin** | 7,499 Books | Romance dominates mass-market publishing, far exceeding others. |
 | **Peak Publishing Era** | **1999 - 2002** | ~17k/year | The "Golden Era" of book releases within this specific dataset timeline. |
 
 </div>
@@ -228,6 +269,7 @@ Extensive Exploratory Data Analysis (EDA) revealed fascinating insights about re
 <br>
 
 ### 🌍 4. User Demographics
+*   **Age:** The dominant peak for readers lies between **19 and 35 years old**. 
 *   **Location:** The dataset is heavily skewed toward North America. **Toronto (13.3%)**, Seattle (11.7%), and Portland (11.2%) are the top user locations. London (8.7%) is the only non-North American city in the top 10.
 
 <br>
@@ -238,7 +280,7 @@ Extensive Exploratory Data Analysis (EDA) revealed fascinating insights about re
 
 ### Prerequisites
 
-- Python 3.8+
+- Python 3.10+
 - pip package manager
 
 ### Local Setup Instructions
@@ -265,7 +307,7 @@ Extensive Exploratory Data Analysis (EDA) revealed fascinating insights about re
    streamlit run app.py
    ```
 
-> **Note on Data Loading:** The application is configured to automatically download the pre-processed pivot tables and datasets directly from Hugging Face (`IamPradeep/BRS_DATA`). You do not need to download the CSV files manually!
+> **Note on Data Loading:** The application is configured to automatically download the pre-processed data structures directly from Hugging Face (`IamPradeep/BRS_DATA`). You do not need to download the CSV files manually to run the interface!
 
 <br>
 
